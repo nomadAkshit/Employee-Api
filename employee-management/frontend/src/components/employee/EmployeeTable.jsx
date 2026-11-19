@@ -1,6 +1,5 @@
 import EmployeeRow from "./EmployeeRow.jsx";
-
-function EmployeeTable({ employees, editEmployee, deleteEmployee, isAdmin }) {
+function EmployeeTable({ employees, editEmployee, deleteEmployee, isAdmin, onSelect }) {
     return (
         <div className="table-wrapper">
             <table className="vintage-table">
@@ -23,6 +22,7 @@ function EmployeeTable({ employees, editEmployee, deleteEmployee, isAdmin }) {
                             editEmployee={editEmployee}
                             deleteEmployee={deleteEmployee}
                             isAdmin={isAdmin}
+                            onSelect={onSelect}
                         />
                     ))}
                 </tbody>
@@ -30,5 +30,8 @@ function EmployeeTable({ employees, editEmployee, deleteEmployee, isAdmin }) {
         </div>
     );
 }
+
+
+
 
 export default EmployeeTable;

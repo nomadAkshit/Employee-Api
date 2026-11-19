@@ -3,8 +3,19 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function ProtectedRoute({ children }) {
-    const { isAuthenticated, user, logout } = useAuth();
+    const {
+        isAuthenticated,
+        user,
+        loading,
+        logout
+    } = useAuth();
 
+    // Wait until cookie authentication check finishes
+    if (loading) {
+        return <div>Checking authentication...</div>;
+    }
+
+    // Redirect only after authentication check
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
     }

@@ -1,19 +1,35 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import Header from "./components/Header.jsx";
+import EmployeeDetailsModal from "./components/EmployeeDetailsModal.jsx";
 import Navigation from "./components/Navigation.jsx";
 import AlertMessage from "./components/AlertMessage.jsx";
 import EmployeeForm from "./components/EmployeeForm.jsx";
-import EmployeeDirectory from "./components/EmployeeDirectory.jsx";
-import { apiFetch } from "./utils/api";
+import EmployeeDirectory from "./components/employee/EmployeeDirectory.jsx";
 import { useAuth } from "./context/AuthContext";
+import useEmployees from "./hooks/useEmployees";
 
-const API_URL = "http://localhost:5000/api/employees";
 
 function EmployeeDashboard() {
-  const [employees, setEmployees] = useState([]);
+  const {
+    employees,
+    getEmployees,
+    saveEmployee,
+    removeEmployee
+  } = useEmployees();
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  function openDetails(employee) {
+    setSelectedEmployee(employee);
+  }
+
+  function closeDetails() {
+    setSelectedEmployee(null);
+  }
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+
   const [department, setDepartment] = useState("");
   const [salary, setSalary] = useState("");
   const [editingId, setEditingId] = useState("");
@@ -22,6 +38,35 @@ function EmployeeDashboard() {
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const { user } = useAuth();
+
+  // Personal details
+  const [phone, setPhone] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState("");
+
+  const [permanentAddress, setPermanentAddress] = useState({
+    street: "",
+    city: "",
+    state: "",
+    pincode: ""
+  });
+
+  // Employment details
+  const [designation, setDesignation] = useState("");
+  const [employmentType, setEmploymentType] = useState("Full-time");
+  const [joiningDate, setJoiningDate] = useState("");
+  const [employmentStatus, setEmploymentStatus] = useState("Active");
+  const [reportingManager, setReportingManager] = useState("");
+
+  // Bond details
+  const [bondApplicable, setBondApplicable] = useState(false);
+  const [bondStartDate, setBondStartDate] = useState("");
+  const [bondEndDate, setBondEndDate] = useState("");
+  const [bondAmount, setBondAmount] = useState("");
+  const [profilePhotoFile, setProfilePhotoFile] = useState(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState("");
+
 
   const isAdmin = user?.role === "admin";
 
@@ -40,23 +85,31 @@ function EmployeeDashboard() {
     }
   }, [isAdmin]);
 
-  async function getEmployees() {
-    try {
-      const response = await apiFetch(API_URL);
-      const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || "Could not get employees");
-      }
-
-      setEmployees(data);
-    } catch (err) {
+  useEffect(() => {
+    getEmployees().catch((err) => {
       setError(err.message);
+    });
+  }, [getEmployees]);
+
+
+  function handleProfilePhotoSelection(file) {
+    setProfilePhotoFile(file);
+
+    if (profilePhotoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(profilePhotoPreview);
+    }
+
+    if (file) {
+      setProfilePhotoPreview(URL.createObjectURL(file));
+    } else {
+      setProfilePhotoPreview(
+        profilePhoto
+          ? `http://localhost:5000${profilePhoto}`
+          : ""
+      );
     }
   }
-  useEffect(() => {
-    getEmployees();
-  }, []);
 
   // Clear single field error when user starts typing
   function clearFieldError(field) {
@@ -95,13 +148,14 @@ function EmployeeDashboard() {
   }
 
   // Add a new employee or update an existing one
+
   async function handleSubmit(e) {
     e.preventDefault();
 
     setError("");
     setSuccess("");
 
-    // Required fields validation with exact field labels
+    // Validate required fields
     const newErrors = {};
 
     if (!name.trim()) {
@@ -129,64 +183,59 @@ function EmployeeDashboard() {
 
     if (Object.keys(newErrors).length > 0) {
       setFieldErrors(newErrors);
-      const firstError = Object.values(newErrors)[0];
-      setError(firstError);
+      setError(Object.values(newErrors)[0]);
       return;
     }
 
     setFieldErrors({});
     setLoading(true);
 
-    const employee = {
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      department: department.trim(),
-      salary: Number(salary),
-    };
-
     try {
+      // Create multipart form data
+      const formData = new FormData();
 
-      const url = editingId
-        ? `${API_URL}/${editingId}`
-        : API_URL;
+      formData.append("name", name.trim());
+      formData.append("email", email.trim().toLowerCase());
+      formData.append("department", department.trim());
+      formData.append("salary", String(Number(salary)));
 
-      const response = await apiFetch(url, {
-        method: editingId ? "PUT" : "POST",
-        body: JSON.stringify(employee),
-      });
+      formData.append("phone", phone);
+      formData.append("dateOfBirth", dateOfBirth);
+      formData.append("gender", gender);
 
+      formData.append(
+        "permanentAddress",
+        JSON.stringify(permanentAddress)
+      );
 
-      const data = await response.json();
+      formData.append("designation", designation);
+      formData.append("employmentType", employmentType);
+      formData.append("joiningDate", joiningDate);
+      formData.append("employmentStatus", employmentStatus);
+      formData.append("reportingManager", reportingManager);
 
-      if (!response.ok) {
-        if (
-          response.status === 409 ||
-          data.message?.toLowerCase().includes("email already exists")
-        ) {
-          setFieldErrors((prev) => ({
-            ...prev,
-            email: "User email already exists",
-          }));
-        } else if (data.message?.includes("is required")) {
-          if (data.message.includes("Full Name"))
-            setFieldErrors((prev) => ({ ...prev, name: data.message }));
-          if (data.message.includes("Email Address"))
-            setFieldErrors((prev) => ({ ...prev, email: data.message }));
-          if (data.message.includes("Department"))
-            setFieldErrors((prev) => ({ ...prev, department: data.message }));
-          if (data.message.includes("Salary"))
-            setFieldErrors((prev) => ({ ...prev, salary: data.message }));
-        }
-        throw new Error(data.message || "Something went wrong");
+      formData.append(
+        "bondDetails",
+        JSON.stringify({
+          applicable: bondApplicable,
+          startDate: bondApplicable ? bondStartDate : "",
+          endDate: bondApplicable ? bondEndDate : "",
+          bondAmount: bondApplicable ? bondAmount : null,
+          status: bondApplicable ? "Active" : "Not Applicable"
+        })
+      );
+
+      if (profilePhotoFile) {
+        formData.append("profilePhoto", profilePhotoFile);
       }
 
-      setName("");
-      setEmail("");
-      setDepartment("");
-      setSalary("");
-      setFieldErrors({});
-      const wasEditing = !!editingId;
-      setEditingId("");
+      const wasEditing = Boolean(editingId);
+
+      // Save employee through the custom hook
+      await saveEmployee(editingId, formData);
+
+      // Only reset after successful save
+      resetEmployeeForm();
 
       setSuccess(
         wasEditing
@@ -198,26 +247,100 @@ function EmployeeDashboard() {
         setActiveTab("directory");
       }
 
-      // Refresh employee list
-      getEmployees();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
   }
 
+  function resetEmployeeForm() {
+    setName("");
+    setEmail("");
+    setDepartment("");
+    setSalary("");
+
+    setPhone("");
+    setDateOfBirth("");
+    setGender("");
+
+    setPermanentAddress({
+      street: "",
+      city: "",
+      state: "",
+      pincode: ""
+    });
+
+    setProfilePhoto("");
+    setProfilePhotoFile(null);
+
+    if (profilePhotoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(profilePhotoPreview);
+    }
+
+    setProfilePhotoPreview("");
+
+    setDesignation("");
+    setEmploymentType("Full-time");
+    setJoiningDate("");
+    setEmploymentStatus("Active");
+    setReportingManager("");
+
+    setBondApplicable(false);
+    setBondStartDate("");
+    setBondEndDate("");
+    setBondAmount("");
+
+    setEditingId("");
+    setFieldErrors({});
+  }
+
   // Fill the form when Edit is clicked
   function editEmployee(employee) {
     setEditingId(employee._id || employee.id);
+
+    // Basic information
     setName(employee.name || "");
     setEmail(employee.email || "");
     setDepartment(employee.department || "");
-    setSalary(
-      employee.salary !== undefined && employee.salary !== null
-        ? employee.salary
+    setSalary(employee.salary ?? "");
+
+    // Personal details
+    setPhone(employee.phone || "");
+    setDateOfBirth(employee.dateOfBirth?.slice(0, 10) || "");
+    setGender(employee.gender || "");
+
+    setPermanentAddress({
+      street: employee.permanentAddress?.street || "",
+      city: employee.permanentAddress?.city || "",
+      state: employee.permanentAddress?.state || "",
+      pincode: employee.permanentAddress?.pincode || ""
+    });
+
+    // Existing profile photo
+    setProfilePhoto(employee.profilePhoto || "");
+    setProfilePhotoFile(null);
+    setProfilePhotoPreview(
+      employee.profilePhoto
+        ? `http://localhost:5000${employee.profilePhoto}`
         : ""
     );
+
+    // Employment details
+    setDesignation(employee.designation || "");
+    setEmploymentType(employee.employmentType || "Full-time");
+    setJoiningDate(employee.joiningDate?.slice(0, 10) || "");
+    setEmploymentStatus(employee.employmentStatus || "Active");
+    setReportingManager(employee.reportingManager || "");
+
+    // Bond details
+    const bond = employee.bondDetails || {};
+
+    setBondApplicable(bond.applicable || false);
+    setBondStartDate(bond.startDate?.slice(0, 10) || "");
+    setBondEndDate(bond.endDate?.slice(0, 10) || "");
+    setBondAmount(bond.bondAmount ?? "");
+
     setError("");
     setSuccess("");
     setFieldErrors({});
@@ -226,14 +349,9 @@ function EmployeeDashboard() {
 
   // Clear the form when Cancel is clicked
   function cancelEdit() {
-    setEditingId("");
-    setName("");
-    setEmail("");
-    setDepartment("");
-    setSalary("");
+    resetEmployeeForm();
     setError("");
     setSuccess("");
-    setFieldErrors({});
     setActiveTab("directory");
   }
 
@@ -243,26 +361,14 @@ function EmployeeDashboard() {
       "Are you sure you want to delete this employee?"
     );
 
-    if (!confirmDelete) {
-      return;
-    }
+    if (!confirmDelete) return;
 
     setError("");
     setSuccess("");
 
     try {
-      const response = await apiFetch(`${API_URL}/${id}`, {
-        method: "DELETE",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Could not delete employee");
-      }
-
+      await removeEmployee(id);
       setSuccess("Employee deleted successfully.");
-      getEmployees();
     } catch (err) {
       setError(err.message);
     }
@@ -317,6 +423,7 @@ function EmployeeDashboard() {
       {/* TAB 1: ADD / EDIT EMPLOYEE FORM */}
       {activeTab === "register" && isAdmin && (
         <EmployeeForm
+          // Basic information
           name={name}
           setName={setName}
           email={email}
@@ -325,13 +432,50 @@ function EmployeeDashboard() {
           setDepartment={setDepartment}
           salary={salary}
           setSalary={setSalary}
+
+          // Personal details
+          phone={phone}
+          setPhone={setPhone}
+          dateOfBirth={dateOfBirth}
+          setDateOfBirth={setDateOfBirth}
+          gender={gender}
+          setGender={setGender}
+          permanentAddress={permanentAddress}
+          setPermanentAddress={setPermanentAddress}
+
+          // Profile photo
+          profilePhotoPreview={profilePhotoPreview}
+          setProfilePhotoFile={handleProfilePhotoSelection}
+
+          // Employment details
+          designation={designation}
+          setDesignation={setDesignation}
+          employmentType={employmentType}
+          setEmploymentType={setEmploymentType}
+          joiningDate={joiningDate}
+          setJoiningDate={setJoiningDate}
+          employmentStatus={employmentStatus}
+          setEmploymentStatus={setEmploymentStatus}
+          reportingManager={reportingManager}
+          setReportingManager={setReportingManager}
+
+          // Bond details
+          bondApplicable={bondApplicable}
+          setBondApplicable={setBondApplicable}
+          bondStartDate={bondStartDate}
+          setBondStartDate={setBondStartDate}
+          bondEndDate={bondEndDate}
+          setBondEndDate={setBondEndDate}
+          bondAmount={bondAmount}
+          setBondAmount={setBondAmount}
+
+          // Form actions
           editingId={editingId}
           loading={loading}
           handleSubmit={handleSubmit}
           cancelEdit={cancelEdit}
           fieldErrors={fieldErrors}
           clearFieldError={clearFieldError}
-          checkEmailDuplicate={checkEmailDuplicate}
         />
       )}
 
@@ -346,6 +490,15 @@ function EmployeeDashboard() {
           editEmployee={editEmployee}
           deleteEmployee={deleteEmployee}
           isAdmin={isAdmin}
+          onSelect={openDetails}
+        />
+      )}
+
+      {/* POPUP: EMPLOYEE FULL DETAILS MODAL */}
+      {selectedEmployee && (
+        <EmployeeDetailsModal
+          employee={selectedEmployee}
+          onClose={closeDetails}
         />
       )}
     </div>

@@ -3,20 +3,17 @@ const jwt = require("jsonwebtoken");
 
 const authMiddleware = (req, res, next) => {
     try {
-        // Get token from request header
-        const authHeader = req.headers.authorization;
+        // Get JWT from HTTP-only cookie
+        const token = req.cookies?.token;
 
         // Check if token exists
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        if (!token) {
             return res.status(401).json({
-                message: "Access denied. No token provided."
+                message: "Access denied. Please log in."
             });
         }
 
-        // Extract token
-        const token = authHeader.split(" ")[1];
-
-        // Verify token
+        // Verify JWT
         const decoded = jwt.verify(
             token,
             process.env.JWT_SECRET

@@ -8,7 +8,8 @@ function EmployeeDirectory({
     setActiveTab,
     editEmployee,
     deleteEmployee,
-    isAdmin
+    isAdmin,
+    onSelect
 }) {
     return (
         <section className="vintage-card">
@@ -67,6 +68,7 @@ function EmployeeDirectory({
                     editEmployee={editEmployee}
                     deleteEmployee={deleteEmployee}
                     isAdmin={isAdmin}
+                    onSelect={onSelect}
                 />
             )}
         </section>

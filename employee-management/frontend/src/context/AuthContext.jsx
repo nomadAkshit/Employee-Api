@@ -1,37 +1,55 @@
 
-import { createContext, useContext, useState } from "react";
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useState
+} from "react";
 
 const AuthContext = createContext(null);
 
 const API_URL = "http://localhost:5000/api/auth";
 
 export function AuthProvider({ children }) {
-    const [token, setToken] = useState(
-        () => localStorage.getItem("token")
-    );
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const [user, setUser] = useState(() => {
-        const savedUser = localStorage.getItem("user");
+    // Check existing cookie session
+    async function checkAuth() {
+        try {
+            const response = await fetch(`${API_URL}/me`, {
+                method: "GET",
+                credentials: "include"
+            });
 
-        return savedUser ? JSON.parse(savedUser) : null;
-    });
+            if (!response.ok) {
+                setUser(null);
+                return;
+            }
 
-    // Save login details
-    function saveAuth(data) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+            const data = await response.json();
+            setUser(data.user);
 
-        setToken(data.token);
-        setUser(data.user);
+        } catch (error) {
+            console.error("Authentication check failed:", error);
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
     }
 
-    // Signup function
+    useEffect(() => {
+        checkAuth();
+    }, []);
+
+    // Signup
     async function signup(name, email, password) {
         const response = await fetch(`${API_URL}/signup`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
+            credentials: "include",
             body: JSON.stringify({
                 name,
                 email,
@@ -39,59 +57,70 @@ export function AuthProvider({ children }) {
             })
         });
 
-        const data = await response.json().catch(() => ({}));
+        const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.message || `Signup failed (${response.status})`);
+            throw new Error(data.message || "Signup failed");
         }
 
-        saveAuth(data);
-
+        setUser(data.user);
         return data;
     }
 
-    // Login function
+    // Login
     async function login(email, password) {
         const response = await fetch(`${API_URL}/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
+            credentials: "include",
             body: JSON.stringify({
                 email,
                 password
             })
         });
 
-        const data = await response.json().catch(() => ({}));
+        const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.message || `Login failed (${response.status})`);
+            throw new Error(data.message || "Login failed");
         }
 
-        saveAuth(data);
-
+        setUser(data.user);
         return data;
     }
 
-    // Logout function
-    function logout() {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+    // Logout
+    async function logout() {
+        try {
+            const response = await fetch(`${API_URL}/logout`, {
+                method: "POST",
+                credentials: "include"
+            });
 
-        setToken(null);
-        setUser(null);
+            if (!response.ok) {
+                throw new Error("Logout failed");
+            }
+
+            setUser(null);
+
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 
     return (
         <AuthContext.Provider
             value={{
-                token,
                 user,
+                loading,
                 signup,
                 login,
                 logout,
-                isAuthenticated: Boolean(token)
+                checkAuth,
+                isAuthenticated: Boolean(user)
             }}
         >
             {children}
@@ -99,7 +128,6 @@ export function AuthProvider({ children }) {
     );
 }
 
-// Custom hook
 export function useAuth() {
     return useContext(AuthContext);
 }

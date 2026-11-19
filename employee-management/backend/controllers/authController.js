@@ -18,12 +18,20 @@ function generateToken(user) {
     );
 }
 
+// Cookie configuration
+const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 24 * 60 * 60 * 1000,
+    path: "/"
+};
+
 // SIGNUP
 exports.signup = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
-        // Validate input
         if (!name?.trim() || !email?.trim() || !password) {
             return res.status(400).json({
                 message: "Name, email and password are required"
@@ -38,7 +46,6 @@ exports.signup = async (req, res) => {
 
         const normalizedEmail = email.trim().toLowerCase();
 
-        // Check if user already exists
         const existingUser = await User.findOne({
             email: normalizedEmail
         });
@@ -49,10 +56,8 @@ exports.signup = async (req, res) => {
             });
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        // Create user
         const user = await User.create({
             name: name.trim(),
             email: normalizedEmail,
@@ -60,13 +65,13 @@ exports.signup = async (req, res) => {
             role: "user"
         });
 
-        // Generate JWT
         const token = generateToken(user);
 
-        // Send response
-        res.status(201).json({
+        // Store JWT in HTTP-only cookie
+        res.cookie("token", token, cookieOptions);
+
+        return res.status(201).json({
             message: "Account created successfully",
-            token,
             user: {
                 id: user._id,
                 name: user.name,
@@ -84,7 +89,7 @@ exports.signup = async (req, res) => {
             });
         }
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Signup failed"
         });
     }
@@ -103,7 +108,6 @@ exports.login = async (req, res) => {
 
         const normalizedEmail = email.trim().toLowerCase();
 
-        // Find user
         const user = await User.findOne({
             email: normalizedEmail
         });
@@ -114,7 +118,6 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Compare passwords
         const isPasswordCorrect = await bcrypt.compare(
             password,
             user.password
@@ -126,12 +129,13 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Generate JWT
         const token = generateToken(user);
 
-        res.json({
+        // Store JWT in HTTP-only cookie
+        res.cookie("token", token, cookieOptions);
+
+        return res.status(200).json({
             message: "Login successful",
-            token,
             user: {
                 id: user._id,
                 name: user.name,
@@ -143,8 +147,49 @@ exports.login = async (req, res) => {
     } catch (error) {
         console.log(error);
 
-        res.status(500).json({
+        return res.status(500).json({
             message: "Login failed"
+        });
+    }
+};
+
+// LOGOUT
+exports.logout = (req, res) => {
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/"
+    });
+
+    return res.status(200).json({
+        message: "Logged out successfully"
+    });
+};
+exports.getMe = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select("-password");
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
+        });
+
+    } catch (error) {
+        console.error("Get current user error:", error);
+
+        return res.status(500).json({
+            message: "Could not get user details"
         });
     }
 };

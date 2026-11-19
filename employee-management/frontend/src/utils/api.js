@@ -1,19 +1,23 @@
-
 export async function apiFetch(url, options = {}) {
-    const token = localStorage.getItem("token");
-
     const headers = new Headers(options.headers || {});
 
-    if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
+    const isFormData = options.body instanceof FormData;
+
+    if (
+        options.body &&
+        !isFormData &&
+        !headers.has("Content-Type")
+    ) {
+        headers.set("Content-Type", "application/json");
     }
 
-    if (options.body && !headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
+    if (isFormData) {
+        headers.delete("Content-Type");
     }
 
     return fetch(url, {
         ...options,
-        headers
+        headers,
+        credentials: "include"
     });
 }

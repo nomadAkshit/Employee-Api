@@ -1,97 +1,143 @@
+
+import BasicInformation from "./employee/form/BasicInformation.jsx";
+import PersonalDetails from "./employee/form/PersonalDetails.jsx";
+import EmploymentDetails from "./employee/form/EmploymentDetails.jsx";
+import EmploymentBond from "./employee/form/EmploymentBond.jsx";
+import SalaryDetails from "./employee/form/SalaryDetails.jsx";
+
 function EmployeeForm({
+    // Basic information
     name,
     setName,
     email,
     setEmail,
     department,
     setDepartment,
+    designation,
+    setDesignation,
+
+    // Personal details
+    phone,
+    setPhone,
+    dateOfBirth,
+    setDateOfBirth,
+    gender,
+    setGender,
+    permanentAddress,
+    setPermanentAddress,
+
+    // Profile photo
+    profilePhotoPreview,
+    setProfilePhotoFile,
+
+    // Employment details
+    employmentType,
+    setEmploymentType,
+    joiningDate,
+    setJoiningDate,
+    employmentStatus,
+    setEmploymentStatus,
+    reportingManager,
+    setReportingManager,
+
+    // Bond details
+    bondApplicable,
+    setBondApplicable,
+    bondStartDate,
+    setBondStartDate,
+    bondEndDate,
+    setBondEndDate,
+    bondAmount,
+    setBondAmount,
+
+    // Salary
     salary,
     setSalary,
+
+    // Form actions
     editingId,
     loading,
     handleSubmit,
     cancelEdit,
     fieldErrors = {},
-    clearFieldError = () => {},
+    clearFieldError = () => { },
 }) {
     return (
-        <section className="vintage-card">
+        <section className="vintage-card profile-form-card">
+
             <h2>
                 {editingId ? "Edit Employee Record" : "Add New Employee"}
             </h2>
 
-            <form onSubmit={handleSubmit} noValidate className="vintage-form">
-                <div className="form-group">
-                    <label>Full Name</label>
-                    <input
-                        type="text"
-                        placeholder="Enter full name"
-                        value={name}
-                        onChange={(e) => {
-                            setName(e.target.value);
-                            clearFieldError("name");
-                        }}
-                        className={fieldErrors.name ? "input-error" : ""}
-                    />
-                    {fieldErrors.name && (
-                        <span className="field-error-text">⚠ {fieldErrors.name}</span>
-                    )}
-                </div>
+            <form
+                onSubmit={handleSubmit}
+                noValidate
+                className="vintage-form profile-form"
+            >
 
-                <div className="form-group">
-                    <label>Email Address</label>
-                    <input
-                        type="email"
-                        placeholder="Enter email address"
-                        value={email}
-                        onChange={(e) => {
-                            setEmail(e.target.value);
-                            clearFieldError("email");
-                        }}
-                        className={fieldErrors.email ? "input-error" : ""}
-                    />
-                    {fieldErrors.email && (
-                        <span className="field-error-text">⚠ {fieldErrors.email}</span>
-                    )}
-                </div>
+                {/* 01. Basic Information */}
+                <BasicInformation
+                    name={name}
+                    setName={setName}
+                    email={email}
+                    setEmail={setEmail}
+                    department={department}
+                    setDepartment={setDepartment}
+                    designation={designation}
+                    setDesignation={setDesignation}
+                    fieldErrors={fieldErrors}
+                    clearFieldError={clearFieldError}
+                />
 
-                <div className="form-group">
-                    <label>Department</label>
-                    <input
-                        type="text"
-                        placeholder="Enter department name"
-                        value={department}
-                        onChange={(e) => {
-                            setDepartment(e.target.value);
-                            clearFieldError("department");
-                        }}
-                        className={fieldErrors.department ? "input-error" : ""}
-                    />
-                    {fieldErrors.department && (
-                        <span className="field-error-text">⚠ {fieldErrors.department}</span>
-                    )}
-                </div>
+                {/* 02. Personal Details */}
+                <PersonalDetails
+                    phone={phone}
+                    setPhone={setPhone}
+                    dateOfBirth={dateOfBirth}
+                    setDateOfBirth={setDateOfBirth}
+                    gender={gender}
+                    setGender={setGender}
+                    permanentAddress={permanentAddress}
+                    setPermanentAddress={setPermanentAddress}
+                    profilePhotoPreview={profilePhotoPreview}
+                    setProfilePhotoFile={setProfilePhotoFile}
+                />
 
-                <div className="form-group">
-                    <label>Salary (₹)</label>
-                    <input
-                        type="number"
-                        placeholder="Enter salary in ₹"
-                        value={salary}
-                        onChange={(e) => {
-                            setSalary(e.target.value);
-                            clearFieldError("salary");
-                        }}
-                        min="0"
-                        step="any"
-                        className={fieldErrors.salary ? "input-error" : ""}
-                    />
-                    {fieldErrors.salary && (
-                        <span className="field-error-text">⚠ {fieldErrors.salary}</span>
-                    )}
-                </div>
+                {/* 03. Employment Details */}
+                <EmploymentDetails
+                    employmentType={employmentType}
+                    setEmploymentType={setEmploymentType}
+                    joiningDate={joiningDate}
+                    setJoiningDate={setJoiningDate}
+                    employmentStatus={employmentStatus}
+                    setEmploymentStatus={setEmploymentStatus}
+                    reportingManager={reportingManager}
+                    setReportingManager={setReportingManager}
+                />
 
-                <div className="button-group">
+                {/* 04. Employment Bond */}
+                <EmploymentBond
+                    bondApplicable={bondApplicable}
+                    setBondApplicable={setBondApplicable}
+                    bondStartDate={bondStartDate}
+                    setBondStartDate={setBondStartDate}
+                    bondEndDate={bondEndDate}
+                    setBondEndDate={setBondEndDate}
+                    bondAmount={bondAmount}
+                    setBondAmount={setBondAmount}
+                />
+
+                {/* 05. Salary Details */}
+                <SalaryDetails
+                    salary={salary}
+                    setSalary={setSalary}
+                    fieldErrors={fieldErrors}
+                    clearFieldError={clearFieldError}
+                />
+
+                {/* Form Actions */}
+                <div className="button-group profile-form-actions">
+
                     <button
                         type="submit"
                         className="btn btn-primary"
@@ -113,7 +159,9 @@ function EmployeeForm({
                             Cancel
                         </button>
                     )}
+
                 </div>
+
             </form>
         </section>
     );
